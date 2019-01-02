@@ -3,6 +3,7 @@ package controllers
 import cn.playscala.mongo.Mongo
 import javax.inject._
 import models._
+import org.bson.types.ObjectId
 import play.api.data.Form
 import play.api.data.Forms.{tuple, _}
 import play.api.libs.json.Json
@@ -27,7 +28,36 @@ class ExamController @Inject()(cc: ControllerComponents, mongo: Mongo, commonSer
 
   //保存试题
   def doEdit = checkLogin.async { implicit request: Request[AnyContent] =>
-    Future.successful(Ok(""))
+    Form(tuple(
+      "title" -> nonEmptyText,
+      "option" -> nonEmptyText,
+      "answer" -> nonEmptyText)).bindFromRequest().fold(
+      errForm => Future.successful(Ok(Json.obj("status" -> 1, "msg" -> "您的输入有误！"))),
+      tuple => {
+        val user = RequestHelper.getAuthor
+        val (titleText, option, answer) = tuple
+        val optSize = option.split(",").size
+        if (answer.split(",").filter(x => x.toInt > optSize || x.toInt < 1).size < 1) {
+          mongo.insertOne[Resource](Resource(
+            _id = ObjectId.get().toHexString,
+            title = titleText,
+            content = "<p><br></p>",
+            author = user,
+            resType = "exam",
+            categoryPath = "/scala",
+            categoryName = "Scala",
+            exam = Option(ExamInfo(
+              options = option.split(",").toList,
+              answer = answer.split(",").map(x => x.toInt - 1).sorted.mkString(","),
+              answers = List.empty[ExamAnswer],
+              explain = ""
+            ))))
+          Future(Ok(Json.obj("status" -> 0, "msg" -> "试题提交成功！")))
+        } else {
+          Future.successful(Ok(Json.obj("status" -> 1, "msg" -> "您的输入有误！")))
+        }
+      }
+    )
   }
 
   //提交试题答案
@@ -37,7 +67,7 @@ class ExamController @Inject()(cc: ControllerComponents, mongo: Mongo, commonSer
       tuple => {
         val uid = RequestHelper.getUid
         val (_id, option) = tuple
-        mongo.findById[Resource](_id).map{
+        mongo.findById[Resource](_id).map {
           case Some(r) =>
             if (r.exam.get.answers.exists(_.uid == uid)) {
               Ok(Json.obj("status" -> 1, "msg" -> "很抱歉，您已参与过答题！"))

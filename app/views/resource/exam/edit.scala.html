@@ -25,7 +25,33 @@
       </ul>
       <div class="layui-tab-content" id="LAY_ucm" style="padding: 20px 0;">
         <div class="layui-tab-item layui-show">
-
+          <div class="layui-form-item">
+            <div class="layui-input-block">
+              <button class="layui-btn layui-btn-primary"  lay-filter="formDemo" id="addOpt" value="0">添加选项</button>
+            </div>
+          </div>
+          <div class="layui-form layui-form-pane" id="form">
+            <div class="layui-form-item">
+              <label class="layui-form-label">试题名称</label>
+              <div class="layui-input-block">
+                <input type="text" name="title" required="" lay-verify="required" placeholder="请输入标题" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+            <div id="answer">
+            </div>
+            <div class="layui-form-item">
+              <label class="layui-form-label">答案</label>
+              <div class="layui-input-block">
+                <input type="text" name="answer" required  lay-verify="required" placeholder="请输入答案，多个选项使用逗号分隔；如 1,2" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+            <div class="layui-form-item">
+              <div class="layui-input-block">
+                <button id="submit" class="layui-btn" lay-submit>提交</button>
+                <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -36,4 +62,67 @@
 <script type="text/javascript" src="/assets/plugins/quill/quill.min.js"></script>
 <script type="text/javascript" src="/assets/plugins/quill/quill-emoji.js"></script>
 <script>
+
+  $("#addOpt").click(function (e) {
+      var index = parseInt($("#addOpt").attr("value")) + 1;
+      if (index < 7) {
+        $("#addOpt").attr("value", index);
+        $("#answer").append(" <div class=\"layui-form-item\">\n" +
+                "             <label class=\"layui-form-label\"><i class=\"layui-icon\" style='color:red;' onclick='delCurrentItem(this)'>&#x1006;</i>&nbsp;&nbsp;选项"+index+"</label>\n" +
+                "             <div class=\"layui-input-block\">\n" +
+                "             <input type=\"text\" name='option' required=\"\" placeholder=\"请输入答案\" autocomplete=\"off\" class=\"layui-input\">\n" +
+                "             </div>\n" +
+                "             </div>");
+      } else {
+          layer.alert("最多可添加6个选项！");
+      }
+  });
+
+  function delCurrentItem(e) {
+      e.parentElement.parentElement.remove();
+      $("#checkAnswer").innerHTML = "";
+      var obj = $("#answer").children();
+      for (var i = 0; i < obj.length;i++) {
+        var text = "<i class=\"layui-icon\" style='color:red;' onclick='delCurrentItem(this)'>&#x1006;</i>&nbsp;&nbsp;选项"+(i+1);
+        obj[i].getElementsByClassName("layui-form-label")[0].innerHTML = text;
+      }
+    $("#addOpt").attr("value", obj.length);
+  };
+
+  $('#submit').click(function (e) {
+    var title = $("input[name='title']").val();
+    var answer = $("input[name='answer']").val().replace(/，/ig,',');
+    var option = $("input[name='option']").map(function(){return this.value;}).get().join(",");
+    var flag = 0;
+    $.each(answer.split(","),function (index , value) {
+      if ( value > parseInt($("#addOpt").attr("value")) && value > 0 ){
+          flag = 1;
+          return;
+      }
+    });
+    if (flag === 0){
+      $.ajax({
+        type: 'post',
+        dataType: 'json',
+        contentType: 'application/x-www-form-urlencoded',
+        url: '/exam/edit',
+        data: {title: title, option: option, answer: answer},
+        success: function(res){
+          if(res.status != 0){
+            layer.msg(res.msg);
+          } else {
+            layer.msg(res.msg, {
+              icon: 1,
+              time: 1000
+            }, function(){
+              window.location.reload(true);
+            });
+          }
+        }, error: function(e){
+        }
+      });
+    } else {
+      layer.msg("答案选项不存在，请填写正确的选项！");
+    }
+  });
 </script>
