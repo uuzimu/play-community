@@ -52,7 +52,7 @@ class ExamController @Inject()(cc: ControllerComponents, mongo: Mongo, commonSer
               answers = List.empty[ExamAnswer],
               explain = ""
             ))))
-          Future(Ok(Json.obj("status" -> 0, "msg" -> "试题提交成功！")))
+          Future.successful(Ok(Json.obj("status" -> 0, "msg" -> "试题提交成功！")))
         } else {
           Future.successful(Ok(Json.obj("status" -> 1, "msg" -> "您的输入有误！")))
         }
